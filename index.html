@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="format-detection" content="telephone=yes">
+<title>拉萨·林芝·珠峰 之旅</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --red:#8b2e2e; --red-deep:#6b1f1f; --gold:#d4a017; --gold-light:#f3e5c2; --orange:#e0792a;
+    --bg:#f5f1ea; --card:#ffffff; --ink:#3a2f28; --ink-soft:#7a6a5f; --line:#ece3d5;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+    background:var(--bg); color:var(--ink); font-size:15px; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--red); text-decoration:none;}
+
+  /* 顶部栏 */
+  .appbar{
+    position:fixed; top:0; left:0; right:0; z-index:60; height:50px;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg,#7a2323,#a33b2e); color:#fff;
+    box-shadow:0 2px 8px rgba(0,0,0,.18);
+  }
+  .appbar .t{font-size:17px; font-weight:700; letter-spacing:1px;}
+  .appbar .d{font-size:11px; opacity:.85; margin-left:8px; margin-top:3px;}
+
+  /* 主内容 */
+  main{padding:60px 14px 76px; max-width:640px; margin:0 auto;}
+  .page{display:none;}
+  .page.active{display:block; animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+  /* 底部 tab */
+  .tabbar{
+    position:fixed; bottom:0; left:0; right:0; z-index:60; height:58px;
+    display:flex; background:#fff; border-top:1px solid var(--line);
+    box-shadow:0 -2px 10px rgba(0,0,0,.06); padding-bottom:env(safe-area-inset-bottom);
+  }
+  .tabbar .tb{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px; border:none; background:none; cursor:pointer; font-size:11px; color:var(--ink-soft);
+  }
+  .tabbar .tb .ic{font-size:20px; line-height:1;}
+  .tabbar .tb.active{color:var(--red); font-weight:600;}
+  .tabbar .tb.active .ic{transform:scale(1.1);}
+
+  /* 通用组件 */
+  section{padding:6px 0 10px;}
+  .sec-title{display:flex; align-items:center; gap:8px; margin:14px 0 12px; font-size:18px; font-weight:700;}
+  .sec-title .bar{width:5px; height:19px; background:linear-gradient(var(--red),var(--gold)); border-radius:3px;}
+  .sec-title .en{font-size:11px; color:var(--gold); font-weight:600; letter-spacing:1px; margin-top:4px;}
+
+  .card{background:var(--card); border-radius:14px; padding:15px 16px; margin-bottom:12px;
+    box-shadow:0 2px 10px rgba(90,60,30,.06); border:1px solid var(--line);}
+  .card h3{margin:0 0 8px; font-size:15.5px;}
+  .kv{display:flex; margin-bottom:7px; font-size:14px;}
+  .kv .k{flex:0 0 82px; color:var(--ink-soft);}
+  .kv .v{flex:1;}
+
+  /* 首页 hero */
+  .hero{
+    background:linear-gradient(160deg,#7a2323 0%,#a33b2e 55%,#c9813a 130%);
+    color:#fff; border-radius:16px; padding:22px 20px; margin:0 0 14px; position:relative; overflow:hidden;
+  }
+  .hero::after{content:""; position:absolute; right:-40px; top:-30px; width:180px; height:180px;
+    background:radial-gradient(circle,rgba(255,255,255,.18),transparent 70%); border-radius:50%;}
+  .hero h1{font-size:24px; margin:0 0 4px; font-weight:700; letter-spacing:1px;}
+  .hero .sub{font-size:13px; opacity:.92;}
+  .hero .dates{margin-top:12px; font-size:13px; opacity:.9;}
+  .hero .dates b{font-size:15px;}
+
+  .pickup{background:linear-gradient(135deg,#8b2e2e,#b3443a); color:#fff; border:none;
+    border-radius:16px; padding:17px; margin-bottom:12px; box-shadow:0 6px 18px rgba(139,46,46,.26);}
+  .pickup .p-title{font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; margin-bottom:9px;}
+  .pickup p{margin:5px 0; font-size:13.5px; opacity:.96;}
+  .pickup .hot{background:var(--gold); color:#3a2f28; font-weight:700; padding:1px 8px; border-radius:6px; font-size:12px;}
+
+  /* 行程时间线 */
+  .timeline{position:relative; padding-left:22px;}
+  .timeline::before{content:""; position:absolute; left:7px; top:6px; bottom:6px; width:2px; background:var(--line);}
+  .tl-item{position:relative; margin-bottom:18px;}
+  .tl-item::before{content:""; position:absolute; left:-22px; top:6px; width:12px; height:12px; border-radius:50%;
+    background:#fff; border:3px solid var(--red);}
+  .tl-item .d{font-size:12px; color:var(--gold); font-weight:700; letter-spacing:1px;}
+  .tl-item .t{font-size:15.5px; font-weight:700; margin:2px 0 4px;}
+  .tl-item .desc{font-size:13.5px; color:var(--ink-soft);}
+
+  .schedule{background:#fbf7ef; border:1px dashed var(--gold); border-radius:12px; padding:11px 13px; margin:9px 0 3px;}
+  .schedule .row{display:flex; gap:9px; font-size:13px; padding:3.5px 0;}
+  .schedule .tm{flex:0 0 96px; color:var(--red); font-weight:700; font-variant-numeric:tabular-nums;}
+  .schedule .st{flex:1;}
+
+  .chip{display:inline-block; font-size:12px; padding:2px 10px; border-radius:14px; margin:2px 4px 2px 0;
+    background:var(--gold-light); color:#7a5a10;}
+  .note{font-size:12.5px; color:var(--ink-soft); background:#f6efe4; border-radius:10px; padding:8px 12px; margin:8px 0 0;}
+
+  .btn{display:block; text-align:center; padding:12px; border-radius:12px; font-size:14.5px; font-weight:600; margin-top:9px;}
+  .btn-nav{background:var(--red); color:#fff;}
+  .btn-ghost{background:#fff; color:var(--red); border:1px solid var(--red);}
+
+  #map{height:380px; border-radius:14px; overflow:hidden; border:1px solid var(--line);}
+  #foodmap{height:340px; border-radius:14px; overflow:hidden; border:1px solid var(--line);}
+  .map-tip{font-size:12px; color:var(--ink-soft); margin-top:8px;}
+  .poi-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;}
+  .poi{background:#fff; border:1px solid var(--line); border-radius:12px; padding:11px;}
+  .poi .n{font-size:13.5px; font-weight:700; margin-bottom:2px;}
+  .poi .a{font-size:12px; color:var(--ink-soft); margin-bottom:7px;}
+  .poi .go{font-size:12.5px; color:var(--red); font-weight:600;}
+
+  .food-cat{font-size:13px; font-weight:700; color:var(--red); margin:14px 0 8px; padding-left:10px; border-left:4px solid var(--orange);}
+  .food-list{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .food{background:#fff; border:1px solid var(--line); border-radius:12px; padding:11px;}
+  .food .n{font-size:13.5px; font-weight:700;}
+  .food .t{font-size:11.5px; color:var(--ink-soft); margin:3px 0 7px;}
+  .food .go{font-size:12.5px; color:var(--orange); font-weight:600;}
+
+  .hosp{border-left:4px solid var(--red);}
+  .pharm{border-left:4px solid var(--gold);}
+  .weather-links a{display:block; padding:12px 14px; background:#fff; border:1px solid var(--line);
+    border-radius:12px; margin-bottom:10px; color:var(--ink); font-weight:600;}
+  footer{text-align:center; color:var(--ink-soft); font-size:12px; padding:16px 0 6px;}
+</style>
+</head>
+<body>
+
+<div class="appbar"><span class="t">拉萨 · 林芝 · 珠峰 之旅</span><span class="d">10.31–11.8</span></div>
+
+<main>
+
+  <!-- 首页 -->
+  <div class="page active" id="page-home">
+    <div class="hero">
+      <h1>西藏之旅</h1>
+      <div class="sub">布达拉宫 · 大昭寺 · 色拉寺 · 八廓街 · 林芝 · 珠峰</div>
+      <div class="dates">📅 <b>10月31日 — 11月8日</b> ｜ 西安 ⇄ 拉萨</div>
+    </div>
+
+    <div class="pickup">
+      <div class="p-title">🚘 接机安排</div>
+      <p>✈️ <b>MU2335</b> 西安 10:55 → 拉萨贡嘎 <b>14:20 落地</b></p>
+      <p>📌 <span class="hot">接机师傅在到达口等候</span>，负责送到酒店。</p>
+      <p>🏨 送至：拉萨布达拉宫吉彩国际酒店（宇拓路14号）</p>
+      <p>💡 海拔3650m，落地后动作放慢、多喝水、当天勿洗澡。</p>
+    </div>
+
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>✈️ 航班 <span class="en">FLIGHTS</span></h2>
+      <div class="card">
+        <h3>去程 · 10月31日（周六）</h3>
+        <div class="kv"><span class="k">航班号</span><span class="v">MU2335 东方航空</span></div>
+        <div class="kv"><span class="k">时间</span><span class="v">10:55 — 14:20</span></div>
+        <div class="kv"><span class="k">航线</span><span class="v">西安咸阳 → 拉萨贡嘎</span></div>
+      </div>
+      <div class="card">
+        <h3>返程 · 11月8日（周六）</h3>
+        <div class="kv"><span class="k">航班号</span><span class="v">MU2334 东方航空</span></div>
+        <div class="kv"><span class="k">时间</span><span class="v">15:20 — 18:05</span></div>
+        <div class="kv"><span class="k">航线</span><span class="v">拉萨贡嘎 → 西安咸阳</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>🏨 酒店 <span class="en">HOTEL</span></h2>
+      <div class="card">
+        <h3>拉萨布达拉宫吉彩国际酒店</h3>
+        <div class="kv"><span class="k">地址</span><span class="v">拉萨市城关区 宇拓路14号</span></div>
+        <div class="kv"><span class="k">入住</span><span class="v">10月31日、11月1日 两晚</span></div>
+        <a class="btn btn-nav" href="https://uri.amap.com/navigation?to=91.1270,29.6550,拉萨布达拉宫吉彩国际酒店&mode=car">📍 一键导航到酒店</a>
+      </div>
+      <div class="card" style="background:var(--gold-light);border-color:#e6d3a8;">
+        <p style="margin:0;font-size:12.5px;color:#7a5a10;">⚠️ 跟团期间（11月2日—7日）住宿由旅行团安排；11月7日晚回拉萨后可续订本酒店。</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- 行程 -->
+  <div class="page" id="page-trip">
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>🗓️ 每日行程 <span class="en">ITINERARY</span></h2>
+      <div class="timeline">
+
+        <div class="tl-item">
+          <div class="d">10月31日 · 抵达</div>
+          <div class="t">落地入住 → 色拉寺拍照 → 八廓街逛吃 → 酒吧</div>
+          <div class="desc">落地接机至酒店，适应海拔后前往<b>色拉寺</b>逛寺拍照；晚上<b>八廓街</b>逛吃，之后去<b>拉萨之歌</b>或<b>老鬼酒吧</b>。</div>
+          <div class="schedule">
+            <div class="row"><span class="tm">14:20</span><span class="st">落地贡嘎机场，接机</span></div>
+            <div class="row"><span class="tm">14:20–15:30</span><span class="st">机场→市区→酒店（约1小时）</span></div>
+            <div class="row"><span class="tm">15:30–15:50</span><span class="st">入住、放行李、喝水休息</span></div>
+            <div class="row"><span class="tm">15:50–16:20</span><span class="st">打车去色拉寺（约20分钟）</span></div>
+            <div class="row"><span class="tm">16:20–17:30</span><span class="st">色拉寺逛寺 + 拍照</span></div>
+            <div class="row"><span class="tm">17:30–18:00</span><span class="st">返回市区休息</span></div>
+            <div class="row"><span class="tm">18:30–20:00</span><span class="st">八廓街逛吃打卡</span></div>
+            <div class="row"><span class="tm">20:00 起</span><span class="st">拉萨之歌 / 老鬼酒吧（若不高反）</span></div>
+          </div>
+          <div class="note">⚠️ 色拉寺冬季约16:30停入场、17:00关门，辩经15:00–17:00。若到寺已闭馆，可在<b>外围转经道、建筑外观、后山</b>拍照，或改11月8日上午进寺。</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="d">11月1日 · 拉萨市区</div>
+          <div class="t">布达拉宫 → 大昭寺 → 山河摄影写真</div>
+          <div class="desc">上午<b>布达拉宫</b>（预约），中午<b>大昭寺</b>；下午 <b>16:00</b> 八廓街<b>山河摄影</b>拍写真（约2–3小时），晚上继续逛吃。</div>
+          <div class="schedule">
+            <div class="row"><span class="tm">上午</span><span class="st">布达拉宫（按预约时段）</span></div>
+            <div class="row"><span class="tm">中午</span><span class="st">大昭寺 + 八廓街周边午餐</span></div>
+            <div class="row"><span class="tm">16:00</span><span class="st">山河摄影 拍写真（2–3小时）</span></div>
+            <div class="row"><span class="tm">晚上</span><span class="st">八廓街继续逛吃</span></div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="d">11月2日 — 11月7日 · 跟团游</div>
+          <div class="t">林芝 · 珠峰全景 6日（越野车）</div>
+          <div class="desc">沿「林芝珠峰全景6日」环线：林芝（雅鲁藏布大峡谷、南迦巴瓦）、山南（羊卓雍措）、日喀则、<b>珠峰大本营</b>等，7号晚返拉萨。
+            <br><span class="chip">备点零食</span> 团餐不合胃口可备零食。各地点攻略见本页下方。</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="d">11月8日 · 返程</div>
+          <div class="t">天上邮局 → 买伴手礼 → 飞西安</div>
+          <div class="desc">上午去<b>天上西藏主题邮局</b>寄明信片，随后买伴手礼，预留去机场时间，<b>15:20</b> 返程。</div>
+          <div class="schedule">
+            <div class="row"><span class="tm">09:30–11:00</span><span class="st">天上西藏主题邮局（北京中路33号，布宫东侧，冬季9:30开门）</span></div>
+            <div class="row"><span class="tm">11:00–13:00</span><span class="st">八廓街/宇拓路买伴手礼（牦牛肉干、藏香、唐卡、藏红花、甜茶粉）</span></div>
+            <div class="row"><span class="tm">13:00–13:30</span><span class="st">回酒店取行李</span></div>
+            <div class="row"><span class="tm">13:30–14:30</span><span class="st">打车前往贡嘎机场（约1小时）</span></div>
+            <div class="row"><span class="tm">15:20</span><span class="st">MU2334 起飞返程</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>🏔️ 跟团6日 · 沿途攻略 <span class="en">TOUR GUIDE</span></h2>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">环线：拉萨 → 林芝 → 山南（羊卓雍措）→ 日喀则 → 珠峰大本营 → 返拉萨。具体以旅行团实际安排为准。</p>
+      <div class="card"><h3>🌲 林芝 · 巴松措（2800–3000m）</h3>
+        <p style="font-size:13.5px;color:var(--ink-soft);margin:0;"><b>特色：</b>高原"江南"，海拔低适合适应高反；湖水碧绿、雪山倒影。<br><b>注意：</b>较湿润或有雨，带雨具；早晚偏凉。</p></div>
+      <div class="card"><h3>🏔️ 雅鲁藏布大峡谷 · 南迦巴瓦</h3>
+        <p style="font-size:13.5px;color:var(--ink-soft);margin:0;"><b>特色：</b>世界最深峡谷；南迦巴瓦"十人九不见"，日照金山靠运气。<br><b>注意：</b>观景台风大，穿防风厚外套。</p></div>
+      <div class="card"><h3>💧 羊卓雍措 · 卡若拉冰川（4400–5000m）</h3>
+        <p style="font-size:13.5px;color:var(--ink-soft);margin:0;"><b>特色：</b>圣湖湖水随天光变色；冰川近在咫尺。<br><b>注意：</b>海拔高风大，防高反保暖；冰川5000m+，勿跑跳。</p></div>
+      <div class="card"><h3>🛕 日喀则 · 扎什伦布寺</h3>
+        <p style="font-size:13.5px;color:var(--ink-soft);margin:0;"><b>特色：</b>班禅驻锡地、格鲁派名寺，金顶辉煌。<br><b>注意：</b>殿内不拍照，顺时针游览。</p></div>
+      <div class="card"><h3>🗻 珠峰大本营（约5200m）</h3>
+        <p style="font-size:13.5px;color:var(--ink-soft);margin:0;"><b>特色：</b>世界之巅、星空银河、日照金山。<br><b>注意：</b>极高海拔——备足<b>氧气瓶</b>、保暖（夜间零下）；高反加重及时吸氧下撤；需<b>边防证</b>（旅行社代办，提前确认）。</p></div>
+    </section>
+  </div>
+
+  <!-- 地图 -->
+  <div class="page" id="page-map">
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>🗺️ 路线地图 <span class="en">MAP</span></h2>
+      <div id="map"></div>
+      <div class="map-tip">📍 已标注景点、酒店、机场及跟团环线；点击标记看名称，下方按钮一键高德导航。</div>
+      <div class="poi-grid">
+        <div class="poi"><div class="n">布达拉宫</div><div class="a">市中心</div><a class="go" href="https://uri.amap.com/navigation?to=91.1169,29.6578,布达拉宫&mode=car">导航 →</a></div>
+        <div class="poi"><div class="n">大昭寺</div><div class="a">八廓街核心</div><a class="go" href="https://uri.amap.com/navigation?to=91.1315,29.6533,大昭寺&mode=car">导航 →</a></div>
+        <div class="poi"><div class="n">八廓街</div><div class="a">逛吃/写真</div><a class="go" href="https://uri.amap.com/navigation?to=91.1318,29.6536,八廓街&mode=car">导航 →</a></div>
+        <div class="poi"><div class="n">色拉寺</div><div class="a">北郊·辩经</div><a class="go" href="https://uri.amap.com/navigation?to=91.1333,29.7167,色拉寺&mode=car">导航 →</a></div>
+        <div class="poi"><div class="n">山河摄影</div><div class="a">八廓街写真</div><a class="go" href="https://uri.amap.com/search?keyword=山河摄影&city=拉萨">导航 →</a></div>
+        <div class="poi"><div class="n">天上西藏邮局</div><div class="a">布达拉宫东侧</div><a class="go" href="https://uri.amap.com/navigation?to=91.1200,29.6560,天上西藏主题邮局&mode=car">导航 →</a></div>
+        <div class="poi"><div class="n">吉彩国际酒店</div><div class="a">宇拓路14号</div><a class="go" href="https://uri.amap.com/navigation?to=91.1270,29.6550,拉萨布达拉宫吉彩国际酒店&mode=car">导航 →</a></div>
+        <div class="poi"><div class="n">贡嘎机场</div><div class="a">接机/返程</div><a class="go" href="https://uri.amap.com/navigation?to=90.9119,29.2978,拉萨贡嘎机场&mode=car">导航 →</a></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 美食 -->
+  <div class="page" id="page-food">
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>🍜 八廓街美食 <span class="en">FOOD MAP</span></h2>
+      <div id="foodmap"></div>
+      <div class="map-tip">🟠 橙色圆点为收藏美食店（集中八廓街/大昭寺周边）；精确位置点各店「导航」跳高德搜索。</div>
+
+      <div class="food-cat">第①天晚上 · 八廓街逛吃</div>
+      <div class="food-list">
+        <div class="food"><div class="n">老光明岗琼甜茶馆</div><div class="t">甜茶+藏面</div><a class="go" href="https://uri.amap.com/search?keyword=老光明岗琼甜茶馆&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">措姆凉粉</div><div class="t">酸辣小吃</div><a class="go" href="https://uri.amap.com/search?keyword=措姆凉粉&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">盆子土豆</div><div class="t">炸土豆</div><a class="go" href="https://uri.amap.com/search?keyword=盆子土豆&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">帕加阿妈土豆</div><div class="t">藏式土豆</div><a class="go" href="https://uri.amap.com/search?keyword=帕加阿妈土豆&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">阿刁奶茶</div><div class="t">藏式奶茶</div><a class="go" href="https://uri.amap.com/search?keyword=阿刁奶茶&city=拉萨">导航 →</a></div>
+      </div>
+
+      <div class="food-cat">第②天 · 午餐 + 下午茶</div>
+      <div class="food-list">
+        <div class="food"><div class="n">桑吉拉姆拉萨菜</div><div class="t">正餐·藏餐</div><a class="go" href="https://uri.amap.com/search?keyword=桑吉拉姆拉萨菜&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">美味肉烩米饭</div><div class="t">藏式烩饭</div><a class="go" href="https://uri.amap.com/search?keyword=美味肉烩米饭&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">伊比热包子店</div><div class="t">藏式包子</div><a class="go" href="https://uri.amap.com/search?keyword=伊比热包子店&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">星辰茶馆藏餐</div><div class="t">茶馆藏餐</div><a class="go" href="https://uri.amap.com/search?keyword=星辰茶馆藏餐&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">诺央秀姆酸奶店</div><div class="t">藏式酸奶</div><a class="go" href="https://uri.amap.com/search?keyword=诺央秀姆酸奶店&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">柠渡咖啡</div><div class="t">咖啡下午茶</div><a class="go" href="https://uri.amap.com/search?keyword=柠渡咖啡&city=拉萨">导航 →</a></div>
+      </div>
+
+      <div class="food-cat">随时 · 茶歇小食</div>
+      <div class="food-list">
+        <div class="food"><div class="n">鲁仓茶馆</div><div class="t">甜茶/藏面</div><a class="go" href="https://uri.amap.com/search?keyword=鲁仓茶馆&city=拉萨">导航 →</a></div>
+        <div class="food"><div class="n">城中安珠饼子</div><div class="t">藏式饼子</div><a class="go" href="https://uri.amap.com/search?keyword=城中安珠饼子&city=拉萨">导航 →</a></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 服务 -->
+  <div class="page" id="page-service">
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>⚠️ 注意事项 <span class="en">TIPS</span></h2>
+      <div class="card"><h3>🫁 高原反应</h3><p style="font-size:13.5px;margin:0;">落地放慢节奏、多喝水，当天勿洗澡；备<b>红景天、氧气瓶</b>，头痛恶心加重及时吸氧就医。</p></div>
+      <div class="card"><h3>🧥 保暖防晒</h3><p style="font-size:13.5px;margin:0;">白天12–18℃、早晚接近0℃，<b>昼夜温差大</b>带羽绒服；紫外线强，带防晒霜、墨镜、遮阳帽。</p></div>
+      <div class="card"><h3>📇 证件与预约</h3><p style="font-size:13.5px;margin:0;">随身带<b>身份证</b>；布宫、大昭寺<b>提前预约</b>；去珠峰需<b>边防证</b>（旅行社代办）。</p></div>
+      <div class="card"><h3>🙏 宗教习俗</h3><p style="font-size:13.5px;margin:0;">转经、绕寺<b>顺时针</b>；殿内<b>不拍照</b>、不用手指佛像。</p></div>
+    </section>
+
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>🏥 医院 & 药店 <span class="en">MEDICAL</span></h2>
+      <div class="card hosp">
+        <h3>西藏自治区人民医院（三甲）</h3>
+        <div class="kv"><span class="k">地址</span><span class="v">城关区林廓北路19号</span></div>
+        <a class="btn btn-ghost" href="https://uri.amap.com/navigation?to=91.1000,29.6550,西藏自治区人民医院&mode=car">📍 导航</a>
+      </div>
+      <div class="card hosp">
+        <h3>拉萨市人民医院</h3>
+        <div class="kv"><span class="k">地址</span><span class="v">城关区北京东路（近大昭寺）</span></div>
+        <a class="btn btn-ghost" href="https://uri.amap.com/navigation?to=91.1350,29.6530,拉萨市人民医院&mode=car">📍 导航</a>
+      </div>
+      <div class="card pharm">
+        <h3>💊 药店</h3>
+        <p style="font-size:13.5px;margin:4px 0;">八廓街、宇拓路、北京东路沿线多家药房，可购<b>红景天、氧气瓶、感冒药、肠胃药</b>。</p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="sec-title"><span class="bar"></span>🌤️ 天气 <span class="en">WEATHER</span></h2>
+      <div class="card">
+        <p style="margin:0 0 10px;font-size:13.5px;">拉萨10月底–11月初：晴朗干燥，白天12–18℃，夜间0℃上下，昼夜温差大，紫外线强。</p>
+        <div class="weather-links">
+          <a href="https://www.weather.com.cn/weather/101140101.shtml" target="_blank">🌡 中国天气网 · 拉萨预报 →</a>
+          <a href="https://www.weather.com.cn/weather15d/101140101.shtml" target="_blank">📅 拉萨 15 天预报 →</a>
+        </div>
+      </div>
+    </section>
+
+    <footer>🏔️ 祝旅途愉快 · 平安顺利 · 扎西德勒 🙏</footer>
+  </div>
+
+</main>
+
+<!-- 底部 tab -->
+<nav class="tabbar">
+  <button class="tb active" data-tab="home"><span class="ic">🏠</span><span>首页</span></button>
+  <button class="tb" data-tab="trip"><span class="ic">📅</span><span>行程</span></button>
+  <button class="tb" data-tab="map"><span class="ic">🗺️</span><span>地图</span></button>
+  <button class="tb" data-tab="food"><span class="ic">🍜</span><span>美食</span></button>
+  <button class="tb" data-tab="service"><span class="ic">ℹ️</span><span>服务</span></button>
+</nav>
+
+<script>
+  // Tab 切换
+  var tabs = document.querySelectorAll('.tabbar .tb');
+  var pages = document.querySelectorAll('.page');
+  var map = null, foodmap = null;
+
+  function showTab(name){
+    pages.forEach(function(p){ p.classList.toggle('active', p.id === 'page-'+name); });
+    tabs.forEach(function(t){ t.classList.toggle('active', t.dataset.tab === name); });
+    window.scrollTo(0,0);
+    if(name === 'map'){ initMap(); }
+    if(name === 'food'){ initFoodMap(); }
+  }
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){ showTab(t.dataset.tab); });
+  });
+
+  // 地图懒加载（首次进入对应 tab 才初始化，避免隐藏容器尺寸错乱）
+  function initMap(){
+    if(map){ map.invalidateSize(); return; }
+    map = L.map('map').setView([29.65, 91.10], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OpenStreetMap', maxZoom:18}).addTo(map);
+    var pois = [
+      {name:'布达拉宫', lat:29.6578, lng:91.1169, color:'#8b2e2e'},
+      {name:'大昭寺', lat:29.6533, lng:91.1315, color:'#8b2e2e'},
+      {name:'八廓街', lat:29.6536, lng:91.1318, color:'#d4a017'},
+      {name:'色拉寺', lat:29.7167, lng:91.1333, color:'#8b2e2e'},
+      {name:'山河摄影', lat:29.6535, lng:91.1315, color:'#d4a017'},
+      {name:'天上西藏主题邮局', lat:29.6560, lng:91.1200, color:'#3a6ea5'},
+      {name:'老鬼酒吧', lat:29.6550, lng:91.1300, color:'#6b1f1f'},
+      {name:'吉彩国际酒店', lat:29.6550, lng:91.1270, color:'#2a6b3f'},
+      {name:'拉萨贡嘎机场', lat:29.2978, lng:90.9119, color:'#3a6ea5'},
+      {name:'羊卓雍措', lat:28.9445, lng:90.6690, color:'#3a6ea5'},
+      {name:'日喀则', lat:29.2669, lng:88.8807, color:'#3a6ea5'},
+      {name:'珠峰大本营', lat:28.1328, lng:86.8513, color:'#3a6ea5'},
+      {name:'林芝', lat:29.6487, lng:94.3615, color:'#3a6ea5'}
+    ];
+    pois.forEach(function(p){
+      L.marker([p.lat,p.lng], {icon: dotIcon(p.color)}).addTo(map).bindPopup('<b>'+p.name+'</b>');
+    });
+    var route = [[29.65,91.10],[29.6487,94.3615],[28.9445,90.6690],[29.2669,88.8807],[28.1328,86.8513],[29.65,91.10]];
+    L.polyline(route,{color:'#8b2e2e',weight:2.5,dashArray:'6,6',opacity:.7}).addTo(map);
+  }
+
+  function initFoodMap(){
+    if(foodmap){ foodmap.invalidateSize(); return; }
+    foodmap = L.map('foodmap').setView([29.6545, 91.1310], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OpenStreetMap', maxZoom:19}).addTo(foodmap);
+    var foods = [
+      {name:'老光明岗琼甜茶馆', lat:29.6560, lng:91.1310},
+      {name:'措姆凉粉', lat:29.6545, lng:91.1315},
+      {name:'盆子土豆', lat:29.6535, lng:91.1310},
+      {name:'帕加阿妈土豆', lat:29.6540, lng:91.1305},
+      {name:'阿刁奶茶', lat:29.6540, lng:91.1320},
+      {name:'桑吉拉姆拉萨菜', lat:29.6540, lng:91.1330},
+      {name:'美味肉烩米饭', lat:29.6530, lng:91.1315},
+      {name:'伊比热包子店', lat:29.6535, lng:91.1320},
+      {name:'星辰茶馆藏餐', lat:29.6550, lng:91.1315},
+      {name:'诺央秀姆酸奶店', lat:29.6545, lng:91.1295},
+      {name:'柠渡咖啡', lat:29.6545, lng:91.1300},
+      {name:'鲁仓茶馆', lat:29.6550, lng:91.1300},
+      {name:'城中安珠饼子', lat:29.6530, lng:91.1305}
+    ];
+    foods.forEach(function(f){
+      L.marker([f.lat,f.lng], {icon: dotIcon('#e0792a', 12)}).addTo(foodmap).bindPopup('<b>'+f.name+'</b>');
+    });
+  }
+
+  function dotIcon(color, size){
+    size = size || 14;
+    return L.divIcon({className:'',
+      html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></div>',
+      iconSize:[size,size], iconAnchor:[size/2,size/2]});
+  }
+</script>
+</body>
+</html>
